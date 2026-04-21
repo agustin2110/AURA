@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "author": "Uri Shaked",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-aitewinrobot-esp32c3-supermini",
+      "id": "esp",
+      "top": -89.04,
+      "left": -43.93,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -99.6,
+      "left": -82.6,
+      "attrs": { "color": "purple" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:8", "led1:A", "red", [ "h-9.6", "v0", "h-9.6" ] ],
+    [ "led1:C", "esp:GND", "black", [ "v67.2", "h96.4", "v-76.8" ] ]
+  ],
+  "dependencies": {}
+}
