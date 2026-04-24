@@ -12,6 +12,14 @@
       "attrs": { "chain": "4" }
     }
   ],
-  "connections": [ [ "esp:TX", "$serialMonitor:RX", "", [] ], [ "esp:RX", "$serialMonitor:TX", "", [] ] ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:5V", "matrix1:V+", "red", [ "h-14.21", "v19.2", "h307.2", "v-297.6" ] ],
+    [ "esp:GND.2", "matrix1:GND", "black", [ "v0", "h182.44", "v-43.2" ] ],
+    [ "matrix1:DIN", "esp:23", "green", [ "h28.8", "v96" ] ],
+    [ "esp:5", "matrix1:CS", "green", [ "h163.24", "v-81.6" ] ],
+    [ "matrix1:CLK", "esp:18", "green", [ "h19.2", "v144" ] ]
+  ],
   "dependencies": {}
 }
