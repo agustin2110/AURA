@@ -1,28 +1,17 @@
 {
   "version": 1,
-  "author": "Uri Shaked",
+  "author": "agus s",
   "editor": "wokwi",
   "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
     {
-      "type": "board-aitewinrobot-esp32c3-supermini",
-      "id": "esp",
-      "top": -89.04,
-      "left": -43.93,
-      "attrs": {}
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led1",
-      "top": -99.6,
-      "left": -82.6,
-      "attrs": { "color": "purple" }
+      "type": "wokwi-max7219-matrix",
+      "id": "matrix1",
+      "top": -95.4,
+      "left": -98.16,
+      "attrs": { "chain": "4" }
     }
   ],
-  "connections": [
-    [ "esp:TX", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    [ "esp:8", "led1:A", "red", [ "h-9.6", "v0", "h-9.6" ] ],
-    [ "led1:C", "esp:GND", "black", [ "v67.2", "h96.4", "v-76.8" ] ]
-  ],
+  "connections": [ [ "esp:TX", "$serialMonitor:RX", "", [] ], [ "esp:RX", "$serialMonitor:TX", "", [] ] ],
   "dependencies": {}
 }
