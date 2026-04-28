@@ -7,10 +7,11 @@
     {
       "type": "wokwi-max7219-matrix",
       "id": "matrix1",
-      "top": -95.4,
-      "left": -98.16,
+      "top": -124.2,
+      "left": -117.36,
       "attrs": { "chain": "4" }
-    }
+    },
+    { "type": "board-bmp180", "id": "bmp1", "top": 24.64, "left": -162.94, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -19,7 +20,11 @@
     [ "esp:GND.2", "matrix1:GND", "black", [ "v0", "h182.44", "v-43.2" ] ],
     [ "matrix1:DIN", "esp:23", "green", [ "h28.8", "v96" ] ],
     [ "esp:5", "matrix1:CS", "green", [ "h163.24", "v-81.6" ] ],
-    [ "matrix1:CLK", "esp:18", "green", [ "h19.2", "v144" ] ]
+    [ "matrix1:CLK", "esp:18", "green", [ "h19.2", "v144" ] ],
+    [ "bmp1:VCC", "esp:3V3", "red", [ "h9.6", "v-38.4" ] ],
+    [ "bmp1:GND", "esp:GND.2", "black", [ "h67.2", "v-47.81", "h144", "v38.4" ] ],
+    [ "esp:22", "bmp1:SCL", "green", [ "h33.64", "v-67.2", "h-172.8", "v67.2" ] ],
+    [ "esp:21", "bmp1:SDA", "green", [ "h43.24", "v-105.6", "h-192", "v86.4" ] ]
   ],
   "dependencies": {}
 }

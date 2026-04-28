@@ -1,8 +1,11 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include <Wire.h>
 #include <WiFi.h>
 #include <time.h>
 #include <MD_Parola.h>
-#include <MD_MAX72xx.h>
-#include <SPI.h>
+#include <MD_MAX72xx.h> 
+
 
 // Datos WiFi
 const char* ssid = "Wokwi-GUEST";
@@ -10,7 +13,7 @@ const char* password = "";
 
 
 // Configuración MAX7219
-#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
+#define HARDWARE_TYPE MD_MAX72XX::PAROLA_HW
 #define MAX_DEVICES 4   // cantidad de módulos 8x8
 #define CS_PIN 5
 
@@ -29,7 +32,7 @@ void setup() {
   matriz.begin();
   matriz.setIntensity(5);   // brillo 0 a 15
   matriz.displayClear();
-  matriz.displayText("Conectando WiFi...", PA_CENTER, 80, 1000, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  matriz.print(mensaje);
 
   WiFi.begin(ssid, password);
 
