@@ -1,6 +1,6 @@
-#include <Arduino.h>
-#include <SPI.h>
 #include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP085_U.h>
 #include <WiFi.h>
 #include <time.h>
 #include <MD_Parola.h>
