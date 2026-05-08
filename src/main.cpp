@@ -1,38 +1,49 @@
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP085_U.h>
 #include <WiFi.h>
 #include <time.h>
+#include <Wire.h>
+#include <Adafruit_BMP085_U.h>
+
 #include <MD_Parola.h>
-#include <MD_MAX72xx.h> 
+#include <MD_MAX72xx.h>
+#include <SPI.h>
 
+// WiFi
+const char* ssid = "TU_WIFI";
+const char* password = "TU_CLAVE";
 
-// Datos WiFi
-const char* ssid = "Wokwi-GUEST";
-const char* password = "";
-
-
-// Configuración MAX7219
+// MAX7219
 #define HARDWARE_TYPE MD_MAX72XX::PAROLA_HW
-#define MAX_DEVICES 4   // cantidad de módulos 8x8
+#define MAX_DEVICES 4
 #define CS_PIN 5
 
 MD_Parola matriz = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
-// Zona horaria Argentina
+// BMP180
+Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
+
+// Hora Argentina
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = -3 * 3600;
 const int daylightOffset_sec = 0;
 
-char mensaje[60];
+char mensaje[100];
 
 void setup() {
   Serial.begin(115200);
 
+  Wire.begin(21, 22);
+
   matriz.begin();
-  matriz.setIntensity(5);   // brillo 0 a 15
+  matriz.setIntensity(5);
   matriz.displayClear();
-  matriz.print(mensaje);
+
+  matriz.displayText("Iniciando...", PA_CENTER, 80, 1000, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+
+  if (!bmp.begin()) {
+    matriz.displayClear();
+    matriz.print("Error BMP180");
+    while (1);
+  }
 
   WiFi.begin(ssid, password);
 
@@ -40,8 +51,6 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-
-  Serial.println("WiFi conectado");
 
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
@@ -51,18 +60,29 @@ void setup() {
 void loop() {
   struct tm timeinfo;
 
+  float temperatura;
+  bmp.getTemperature(&temperatura);
+  float presion;
+  bmp.getPressure(&presion);
+
   if (!getLocalTime(&timeinfo)) {
-    strcpy(mensaje, "Error hora");
-  } else {
-    // Formato: 24/04/2026 16:45
     sprintf(
       mensaje,
-      "%02d/%02d/%04d  %02d:%02d",
+      "Temp: %.1f C  Presion: %.0f hPa",
+      temperatura,
+      presion
+    );
+  } else {
+    sprintf(
+      mensaje,
+      "%02d/%02d/%04d  %02d:%02d  Temp: %.1f C  Presion: %.0f hPa",
       timeinfo.tm_mday,
       timeinfo.tm_mon + 1,
       timeinfo.tm_year + 1900,
       timeinfo.tm_hour,
-      timeinfo.tm_min
+      timeinfo.tm_min,
+      temperatura,
+      presion
     );
   }
 
