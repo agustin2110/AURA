@@ -7,9 +7,16 @@
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPDash.h>
+
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+
 // WiFi
-const char* ssid = "TU_WIFI";
-const char* password = "TU_CLAVE";
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
 
 // MAX7219
 #define HARDWARE_TYPE MD_MAX72XX::PAROLA_HW
@@ -21,12 +28,43 @@ MD_Parola matriz = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 // BMP180
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 
+// IR
+#define IR_PIN 13
+IRsend irsend(IR_PIN);
+
 // Hora Argentina
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = -3 * 3600;
 const int daylightOffset_sec = 0;
 
-char mensaje[100];
+char mensaje[120];
+
+// ESP-DASH
+AsyncWebServer server(80);
+ESPDash dashboard(server);
+
+// Botones ESP-DASH
+dash::ToggleButtonCard btnOn (dashboard, "ON");
+dash::ToggleButtonCard btnOff(dashboard, "OFF");
+
+dash::ToggleButtonCard btnBmas (dashboard, "Brillo +");
+dash::ToggleButtonCard btnBmenos (dashboard, "Brillo -");
+
+dash::ToggleButtonCard btnR (dashboard, "Rojo");
+dash::ToggleButtonCard btnG (dashboard, "Verde");
+dash::ToggleButtonCard btnB (dashboard, "Azul");
+dash::ToggleButtonCard btnW (dashboard, "Blanco");
+
+dash::ToggleButtonCard btnFlash (dashboard, "FLASH");
+dash::ToggleButtonCard btnStrobe (dashboard, "STROBE");
+dash::ToggleButtonCard btnFade (dashboard, "FADE");
+dash::ToggleButtonCard btnSmooth (dashboard, "SMOOTH");
+
+// Función para enviar códigos IR
+void enviarIR(uint32_t codigo) {
+  irsend.sendNEC(codigo, 32);
+  delay(100);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -36,6 +74,8 @@ void setup() {
   matriz.begin();
   matriz.setIntensity(5);
   matriz.displayClear();
+
+  irsend.begin();
 
   matriz.displayText("Iniciando...", PA_CENTER, 80, 1000, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
 
@@ -52,7 +92,87 @@ void setup() {
     Serial.print(".");
   }
 
+  Serial.println("");
+  Serial.print("IP ESP-DASH: ");
+  Serial.println(WiFi.localIP());
+
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  // Callbacks botones principales
+  btnOn.onChange([](bool state) {
+    enviarIR(0x00F7C03F);
+    btnOn.setValue(state);
+    dashboard.sendUpdates();
+  });
+
+  btnOff.onChange([](bool state) {
+  enviarIR(0x00F740BF);
+  btnOff.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnBmas.onChange([](bool state) {
+  enviarIR(0x00F700FF);
+  btnBmas.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnBmenos.onChange([](bool state) {
+  enviarIR(0x00F7807F);
+  btnBmenos.setValue(state);
+  dashboard.sendUpdates();
+});
+
+// Colores principales
+  btnR.onChange([](bool state) {
+  enviarIR(0x00F720DF);
+  btnR.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnG.onChange([](bool state) {
+  enviarIR(0x00F7A05F);
+  btnG.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnB.onChange([](bool state) {
+  enviarIR(0x00F7609F);
+  btnB.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnW.onChange([](bool state) {
+  enviarIR(0x00F7E01F);
+  btnW.setValue(state);
+  dashboard.sendUpdates();
+});
+
+// Modos
+  btnFlash.onChange([](bool state) {
+  enviarIR(0x00F7D02F);
+  btnFlash.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnStrobe.onChange([](bool state) {
+  enviarIR(0x00F7F00F);
+  btnStrobe.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnFade.onChange([](bool state) {
+  enviarIR(0x00F7C837);
+  btnFade.setValue(state);
+  dashboard.sendUpdates();
+});
+
+  btnSmooth.onChange([](bool state) {
+  enviarIR(0x00F7E817);
+  btnSmooth.setValue(state);
+  dashboard.sendUpdates();
+});
+  server.begin();
 
   matriz.displayClear();
 }
@@ -62,6 +182,7 @@ void loop() {
 
   float temperatura;
   bmp.getTemperature(&temperatura);
+
   float presion;
   bmp.getPressure(&presion);
 
