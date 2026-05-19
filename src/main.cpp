@@ -33,6 +33,17 @@ bool alarmaActiva = false;
 bool alarmaSonando = false;
 bool alarmaYaDisparoHoy = false;
 unsigned long inicioAlarma = 0;
+
+// ==========================
+// OTRAS OPCIONES DISPLAY
+// ==========================
+
+int tiempoCambioDisplay = 10;
+
+bool mostrarTodoAhora = false;
+
+unsigned long ultimoCambioDisplay = 0;
+
 // Hora Argentina
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = -3 * 3600;
@@ -66,7 +77,7 @@ dash::ToggleButtonCard btnSmooth(dashboard, "SMOOTH");
 dash::SeparatorCard seccionAlarma(
   dashboard,
   "Alarma",
-  "Control del buzzer"
+  "configuracion de alarma"
 );
 
 dash::SliderCard<int> inputHoraAlarma(
@@ -104,6 +115,30 @@ dash::ToggleButtonCard btnActivarAlarma(
 dash::ToggleButtonCard btnFrenarAlarma(
   dashboard,
   "Frenar alarma"
+);
+
+// ==========================
+// OTRAS OPCIONES
+// ==========================
+
+dash::SeparatorCard seccionOtrasOpciones(
+  dashboard,
+  "Otras opciones",
+  "Configuracion display"
+);
+
+dash::SliderCard<int> inputTiempoDisplay(
+  dashboard,
+  "Tiempo cambio display",
+  1,
+  120,
+  1,
+  "seg"
+);
+
+dash::ToggleButtonCard btnMostrarTodo(
+  dashboard,
+  "Mostrar todos los datos"
 );
 
 // Función para enviar códigos IR
@@ -247,8 +282,6 @@ void setup() {
 inputHoraAlarma.onChange([](int value) {
 
   alarmaHora = value;
-  // DEBUG
-  Serial.println (alarmaHora);
   inputHoraAlarma.setValue(alarmaHora);
 
   dashboard.sendUpdates();
@@ -299,11 +332,37 @@ btnFrenarAlarma.onChange([](bool state) {
   dashboard.sendUpdates();
 });
 
-// inputHoraAlarma.setValue(alarmaHora);
+// ==========================
+// CALLBACKS OTRAS OPCIONES
+// ==========================
+
+inputTiempoDisplay.onChange([](int value) {
+
+  tiempoCambioDisplay = value;
+
+  inputTiempoDisplay.setValue(tiempoCambioDisplay);
+
+  dashboard.sendUpdates();
+});
+
+btnMostrarTodo.onChange([](bool state) {
+
+  mostrarTodoAhora = true;
+
+  ultimoCambioDisplay = millis();
+
+  btnMostrarTodo.setValue(false);
+
+  dashboard.sendUpdates();
+});
+
+  inputHoraAlarma.setValue(alarmaHora);
   inputMinutoAlarma.setValue(alarmaMinuto);
   inputDuracionAlarma.setValue(alarmaDuracion);
   btnActivarAlarma.setValue(false);
   btnFrenarAlarma.setValue(false);
+  inputTiempoDisplay.setValue(tiempoCambioDisplay);
+  btnMostrarTodo.setValue(false);
 
   dashboard.sendUpdates();
 
@@ -313,37 +372,82 @@ btnFrenarAlarma.onChange([](bool state) {
 
 }
 
-void loop() 
+  void loop()
 {
   struct tm timeinfo;
+
   float temperatura;
   bmp.getTemperature(&temperatura);
+
   float presion;
   bmp.getPressure(&presion);
+
   if (!getLocalTime(&timeinfo)) {
+
     sprintf(
       mensaje,
-      "Temp: %.1f C  Presion: %.0f hPa",
+      "Temp: %.1f C Presion: %.0f hPa",
       temperatura,
       presion
     );
+
   } else {
+
     controlarAlarma(timeinfo);
-    sprintf(
-      mensaje,
-      "%02d/%02d/%04d  %02d:%02d  Temp: %.1f C  Presion: %.0f hPa",
-      timeinfo.tm_mday,
-      timeinfo.tm_mon + 1,
-      timeinfo.tm_year + 1900,
-      timeinfo.tm_hour,
-      timeinfo.tm_min,
-      temperatura,
-      presion
-    );
+
+    bool mostrarCompleto = false;
+
+    if (millis() - ultimoCambioDisplay >= (tiempoCambioDisplay * 1000UL)) {
+
+      mostrarCompleto = true;
+
+      ultimoCambioDisplay = millis();
+    }
+
+    if (mostrarTodoAhora) {
+
+      mostrarCompleto = true;
+
+      mostrarTodoAhora = false;
+    }
+
+    if (mostrarCompleto) {
+
+      sprintf(
+        mensaje,
+        "%02d/%02d/%04d  %02d:%02d  Temp: %.1f C  Presion: %.0f hPa",
+        timeinfo.tm_mday,
+        timeinfo.tm_mon + 1,
+        timeinfo.tm_year + 1900,
+        timeinfo.tm_hour,
+        timeinfo.tm_min,
+        temperatura,
+        presion
+      );
+
+    } else {
+
+      sprintf(
+        mensaje,
+        "%02d:%02d",
+        timeinfo.tm_hour,
+        timeinfo.tm_min
+      );
+    }
   }
-  matriz.displayText(mensaje, PA_CENTER, 80, 1000, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+
+  matriz.displayText(
+    mensaje,
+    PA_CENTER,
+    80,
+    1000,
+    PA_SCROLL_LEFT,
+    PA_SCROLL_LEFT
+  );
+
   while (!matriz.displayAnimate()) {
     delay(10);
   }
+
   delay(500);
 }
