@@ -26,9 +26,9 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 IRsend irsend(IR_PIN);
 // BUZZER / ALARMA
 #define BUZZER_PIN 12
-int alarmaHora = 7;
+int alarmaHora = 0;
 int alarmaMinuto = 0;
-int alarmaDuracion = 30;
+int alarmaDuracion = 0;
 bool alarmaActiva = false;
 bool alarmaSonando = false;
 bool alarmaYaDisparoHoy = false;
@@ -153,7 +153,12 @@ void setup() {
   matriz.displayClear();
   irsend.begin();
   pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(BUZZER_PIN, LOW);
+
+  tone (BUZZER_PIN, 1000,1);
+  delay (1);
+  noTone (BUZZER_PIN);
+
+
   matriz.displayText("Iniciando...", PA_CENTER, 80, 1000, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
   if (!bmp.begin()) {
     matriz.displayClear();
@@ -242,7 +247,8 @@ void setup() {
 inputHoraAlarma.onChange([](int value) {
 
   alarmaHora = value;
-
+  // DEBUG
+  Serial.println (alarmaHora);
   inputHoraAlarma.setValue(alarmaHora);
 
   dashboard.sendUpdates();
@@ -292,6 +298,19 @@ btnFrenarAlarma.onChange([](bool state) {
 
   dashboard.sendUpdates();
 });
+
+// inputHoraAlarma.setValue(alarmaHora);
+  inputMinutoAlarma.setValue(alarmaMinuto);
+  inputDuracionAlarma.setValue(alarmaDuracion);
+  btnActivarAlarma.setValue(false);
+  btnFrenarAlarma.setValue(false);
+
+  dashboard.sendUpdates();
+
+  server.begin();
+
+  matriz.displayClear();
+
 }
 
 void loop() 
