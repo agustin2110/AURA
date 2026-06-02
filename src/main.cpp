@@ -33,6 +33,8 @@ bool alarmaActiva = false;
 bool alarmaSonando = false;
 bool alarmaYaDisparoHoy = false;
 unsigned long inicioAlarma = 0;
+int horaConfiguracionAlarma = 0;
+int minutoConfiguracionAlarma = 0;
 
 
 // ==========================
@@ -48,8 +50,6 @@ bool mostrarPresionActiva = true;
 bool mostrarExtrasAhora = false;
 
 unsigned long ultimoExtraDisplay = 0;
-int datoActual = 0;
-bool mostrarTodoAhora = false;
 
 // Hora Argentina
 const char* ntpServer = "pool.ntp.org";
@@ -131,48 +131,27 @@ dash::ToggleButtonCard btnFrenarAlarma(
 dash::SeparatorCard seccionOtrasOpciones(
   dashboard,
   "Otras opciones",
-  "Configuracion display"
+  "Datos adicionales del display"
 );
 
-dash::SliderCard<int> inputTiempoHora(
+dash::ToggleButtonCard btnMostrarFecha(
   dashboard,
-  "Tiempo hora",
-  1,
-  120,
-  1,
-  "seg"
+  "Mostrar fecha"
 );
 
-dash::SliderCard<int> inputTiempoFecha(
+dash::ToggleButtonCard btnMostrarTemperatura(
   dashboard,
-  "Tiempo fecha",
-  1,
-  120,
-  1,
-  "seg"
+  "Mostrar temperatura"
 );
 
-dash::SliderCard<int> inputTiempoTemperatura(
+dash::ToggleButtonCard btnMostrarPresion(
   dashboard,
-  "Tiempo temperatura",
-  1,
-  120,
-  1,
-  "seg"
+  "Mostrar presion"
 );
 
-dash::SliderCard<int> inputTiempoPresion(
+dash::ToggleButtonCard btnMostrarExtrasAhora(
   dashboard,
-  "Tiempo presion",
-  1,
-  120,
-  1,
-  "seg"
-);
-
-dash::ToggleButtonCard btnMostrarTodo(
-  dashboard,
-  "Mostrar todos los datos"
+  "Mostrar datos ahora"
 );
 
 // Función para enviar códigos IR
@@ -214,7 +193,43 @@ void controlarAlarma(struct tm timeinfo) {
     noTone(BUZZER_PIN);
   }
 }
-void setup() {
+void imprimirAlarmaSerial() {
+
+  struct tm timeinfo;
+
+  if (getLocalTime(&timeinfo)) {
+    horaConfiguracionAlarma = timeinfo.tm_hour;
+    minutoConfiguracionAlarma = timeinfo.tm_min;
+  }
+
+  Serial.print("Alarma configurada a las ");
+
+  if (horaConfiguracionAlarma < 10) Serial.print("0");
+  Serial.print(horaConfiguracionAlarma);
+
+  Serial.print(":");
+
+  if (minutoConfiguracionAlarma < 10) Serial.print("0");
+  Serial.print(minutoConfiguracionAlarma);
+
+  Serial.print(" para sonar a las ");
+
+  if (alarmaHora < 10) Serial.print("0");
+  Serial.print(alarmaHora);
+
+  Serial.print(":");
+
+  if (alarmaMinuto < 10) Serial.print("0");
+  Serial.print(alarmaMinuto);
+
+  Serial.print(" durante ");
+
+  Serial.print(alarmaDuracion);
+
+  Serial.println(" segundos");
+}
+void setup() 
+{
   Serial.begin(115200);
   Wire.begin(21, 22);
   matriz.begin();
@@ -319,6 +334,8 @@ inputHoraAlarma.onChange([](int value) {
   inputHoraAlarma.setValue(alarmaHora);
 
   dashboard.sendUpdates();
+  imprimirAlarmaSerial();
+  Serial.println("hora actualizada");
 });
 
 inputMinutoAlarma.onChange([](int value) {
@@ -328,6 +345,8 @@ inputMinutoAlarma.onChange([](int value) {
   inputMinutoAlarma.setValue(alarmaMinuto);
 
   dashboard.sendUpdates();
+  imprimirAlarmaSerial();
+  Serial.println("minuto actualizada");
 });
 
 inputDuracionAlarma.onChange([](int value) {
@@ -337,6 +356,9 @@ inputDuracionAlarma.onChange([](int value) {
   inputDuracionAlarma.setValue(alarmaDuracion);
 
   dashboard.sendUpdates();
+  imprimirAlarmaSerial();
+
+  Serial.println("duracion actualizada");
 });
 
 btnActivarAlarma.onChange([](bool state) {
@@ -370,63 +392,42 @@ btnFrenarAlarma.onChange([](bool state) {
 // CALLBACKS OTRAS OPCIONES
 // ==========================
 
-// ==========================
-// CALLBACKS OTRAS OPCIONES
-// ==========================
-
-inputTiempoHora.onChange([](int value) {
-  tiempoHora = value;
-  Serial.print("Tiempo hora: ");
-  Serial.println(tiempoHora);
-});
-
-inputTiempoFecha.onChange([](int value) {
-  tiempoFecha = value;
-  Serial.print("Tiempo fecha: ");
-  Serial.println(tiempoFecha);
-});
-
-inputTiempoTemperatura.onChange([](int value) {
-  tiempoTemperatura = value;
-  Serial.print("Tiempo temperatura: ");
-  Serial.println(tiempoTemperatura);
-});
-
-inputTiempoPresion.onChange([](int value) {
-  tiempoPresion = value;
-  Serial.print("Tiempo presion: ");
-  Serial.println(tiempoPresion);
-});
-
-btnMostrarTodo.onChange([](bool state) {
-  mostrarTodoAhora = true;
-  datoActual = 0;
-
-  btnMostrarTodo.setValue(false);
+btnMostrarFecha.onChange([](bool state) {
+  mostrarFechaActiva = state;
+  btnMostrarFecha.setValue(state);
   dashboard.sendUpdates();
 });
 
-  inputHoraAlarma.setValue(alarmaHora);
-  inputMinutoAlarma.setValue(alarmaMinuto);
-  inputDuracionAlarma.setValue(alarmaDuracion);
-  inputTiempoHora.setValue(tiempoHora);
-  inputTiempoFecha.setValue(tiempoFecha);
-  inputTiempoTemperatura.setValue(tiempoTemperatura);
-  inputTiempoPresion.setValue(tiempoPresion);
-  btnActivarAlarma.setValue(false);
-  btnFrenarAlarma.setValue(false);
-
-  
-  btnMostrarTodo.setValue(false);
-
+btnMostrarTemperatura.onChange([](bool state) {
+  mostrarTemperaturaActiva = state;
+  btnMostrarTemperatura.setValue(state);
   dashboard.sendUpdates();
+});
 
-  server.begin();
+btnMostrarPresion.onChange([](bool state) {
+  mostrarPresionActiva = state;
+  btnMostrarPresion.setValue(state);
+  dashboard.sendUpdates();
+});
 
-  matriz.displayClear();
+btnMostrarExtrasAhora.onChange([](bool state) {
+  mostrarExtrasAhora = true;
+  ultimoExtraDisplay = millis();
+
+  btnMostrarExtrasAhora.setValue(false);
+  dashboard.sendUpdates();
+});
+
+btnMostrarFecha.setValue(mostrarFechaActiva);
+btnMostrarTemperatura.setValue(mostrarTemperaturaActiva);
+btnMostrarPresion.setValue(mostrarPresionActiva);
+btnMostrarExtrasAhora.setValue(false);
+dashboard.sendUpdates();
+server.begin();
+matriz.displayClear();
+Serial.println("ESP-DASH iniciado");
 
 }
-
 
 void loop()
 {
@@ -438,18 +439,11 @@ void loop()
   float presion;
   bmp.getPressure(&presion);
 
-  static unsigned long ultimoHora = 0;
-  static unsigned long ultimoFecha = 0;
-  static unsigned long ultimoTemperatura = 0;
-  static unsigned long ultimoPresion = 0;
-
   if (!getLocalTime(&timeinfo)) {
 
     sprintf(
       mensaje,
-      "Temp: %.1f C Presion: %.0f hPa",
-      temperatura,
-      presion
+      "Hora no disponible"
     );
 
   } else {
@@ -458,84 +452,55 @@ void loop()
 
     unsigned long ahora = millis();
 
-    bool mostrarHora = false;
-    bool mostrarFecha = false;
-    bool mostrarTemperatura = false;
-    bool mostrarPresion = false;
+    bool mostrarExtras = false;
 
-    if (ahora - ultimoHora >= tiempoHora * 1000UL) {
-      mostrarHora = true;
-      ultimoHora = ahora;
+    if (ahora - ultimoExtraDisplay >= intervaloDatosExtra * 1000UL) {
+      mostrarExtras = true;
+      ultimoExtraDisplay = ahora;
     }
 
-    if (ahora - ultimoFecha >= tiempoFecha * 1000UL) {
-      mostrarFecha = true;
-      ultimoFecha = ahora;
-    }
-
-    if (ahora - ultimoTemperatura >= tiempoTemperatura * 1000UL) {
-      mostrarTemperatura = true;
-      ultimoTemperatura = ahora;
-    }
-
-    if (ahora - ultimoPresion >= tiempoPresion * 1000UL) {
-      mostrarPresion = true;
-      ultimoPresion = ahora;
-    }
-
-    if (mostrarTodoAhora) {
-      mostrarHora = true;
-      mostrarFecha = true;
-      mostrarTemperatura = true;
-      mostrarPresion = true;
-
-      ultimoHora = ahora;
-      ultimoFecha = ahora;
-      ultimoTemperatura = ahora;
-      ultimoPresion = ahora;
-
-      mostrarTodoAhora = false;
+    if (mostrarExtrasAhora) {
+      mostrarExtras = true;
+      mostrarExtrasAhora = false;
+      ultimoExtraDisplay = ahora;
     }
 
     strcpy(mensaje, "");
 
-    if (mostrarFecha) {
-      sprintf(
-        mensaje + strlen(mensaje),
-        "%02d/%02d/%04d  ",
-        timeinfo.tm_mday,
-        timeinfo.tm_mon + 1,
-        timeinfo.tm_year + 1900
-      );
-    }
+    sprintf(
+      mensaje + strlen(mensaje),
+      "%02d:%02d  ",
+      timeinfo.tm_hour,
+      timeinfo.tm_min
+    );
 
-    if (mostrarHora) {
-      sprintf(
-        mensaje + strlen(mensaje),
-        "%02d:%02d  ",
-        timeinfo.tm_hour,
-        timeinfo.tm_min
-      );
-    }
+    if (mostrarExtras) {
 
-    if (mostrarTemperatura) {
-      sprintf(
-        mensaje + strlen(mensaje),
-        "Temp %.1f C  ",
-        temperatura
-      );
-    }
+      if (mostrarFechaActiva) {
+        sprintf(
+          mensaje + strlen(mensaje),
+          "%02d/%02d/%04d  ",
+          timeinfo.tm_mday,
+          timeinfo.tm_mon + 1,
+          timeinfo.tm_year + 1900
+        );
+      }
 
-    if (mostrarPresion) {
-      sprintf(
-        mensaje + strlen(mensaje),
-        "Presion %.0f hPa  ",
-        presion
-      );
-    }
+      if (mostrarTemperaturaActiva) {
+        sprintf(
+          mensaje + strlen(mensaje),
+          "Temp %.1f C  ",
+          temperatura
+        );
+      }
 
-    if (strlen(mensaje) == 0) {
-      sprintf(mensaje, " ");
+      if (mostrarPresionActiva) {
+        sprintf(
+          mensaje + strlen(mensaje),
+          "Presion %.0f hPa  ",
+          presion
+        );
+      }
     }
   }
 
