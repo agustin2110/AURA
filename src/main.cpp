@@ -26,15 +26,23 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 IRsend irsend(IR_PIN);
 // BUZZER / ALARMA
 #define BUZZER_PIN 12
-int alarmaHora = 0;
-int alarmaMinuto = 0;
-int alarmaDuracion = 0;
-bool alarmaActiva = false;
-bool alarmaSonando = false;
-bool alarmaYaDisparoHoy = false;
-unsigned long inicioAlarma = 0;
-int horaConfiguracionAlarma = 0;
-int minutoConfiguracionAlarma = 0;
+#define CANT_ALARMAS 3
+
+struct Alarma {
+  int hora;
+  int minuto;
+  int duracion;
+  bool activa;
+  bool sonando;
+  bool yaDisparoHoy;
+  unsigned long inicio;
+};
+
+Alarma alarmas[CANT_ALARMAS] = {
+  {0, 0, 30, false, false, false, 0},
+  {0, 0, 30, false, false, false, 0},
+  {0, 0, 30, false, false, false, 0}
+};
 
 
 // ==========================
@@ -77,51 +85,156 @@ dash::ToggleButtonCard btnFlash(dashboard, "FLASH");
 dash::ToggleButtonCard btnStrobe(dashboard, "STROBE");
 dash::ToggleButtonCard btnFade(dashboard, "FADE");
 dash::ToggleButtonCard btnSmooth(dashboard, "SMOOTH");
+
 // ==========================
-// SECCION ALARMA
+// SECCION GENERAL ALARMAS
 // ==========================
 
-dash::SeparatorCard seccionAlarma(
+dash::SeparatorCard seccionAlarmas(
   dashboard,
-  "Alarma",
-  "configuracion de alarma"
+  "Alarmas",
+  "Configuracion de alarmas"
 );
 
-dash::SliderCard<int> inputHoraAlarma(
+// ==========================
+// ALARMA 1
+// ==========================
+
+dash::SeparatorCard seccionAlarma1(
   dashboard,
-  "Hora alarma",
+  "Alarma 1",
+  "Hora, minuto y duracion"
+);
+
+dash::SliderCard<int> alarma1Hora(
+  dashboard,
+  "Alarma 1 - Hora",
   0,
   23,
   1,
   "hs"
 );
 
-dash::SliderCard<int> inputMinutoAlarma(
+dash::SliderCard<int> alarma1Minuto(
   dashboard,
-  "Minuto alarma",
+  "Alarma 1 - Minuto",
   0,
   59,
   1,
   "min"
 );
 
-dash::SliderCard<int> inputDuracionAlarma(
+dash::SliderCard<int> alarma1Duracion(
   dashboard,
-  "Duracion alarma",
+  "Alarma 1 - Duracion",
   1,
   300,
   1,
   "seg"
 );
 
-dash::ToggleButtonCard btnActivarAlarma(
+dash::ToggleButtonCard alarma1Activa(
   dashboard,
-  "Activar alarma"
+  "Activar alarma 1"
+);
+
+// ==========================
+// ALARMA 2
+// ==========================
+
+dash::SeparatorCard seccionAlarma2(
+  dashboard,
+  "Alarma 2",
+  "Hora, minuto y duracion"
+);
+
+dash::SliderCard<int> alarma2Hora(
+  dashboard,
+  "Alarma 2 - Hora",
+  0,
+  23,
+  1,
+  "hs"
+);
+
+dash::SliderCard<int> alarma2Minuto(
+  dashboard,
+  "Alarma 2 - Minuto",
+  0,
+  59,
+  1,
+  "min"
+);
+
+dash::SliderCard<int> alarma2Duracion(
+  dashboard,
+  "Alarma 2 - Duracion",
+  1,
+  300,
+  1,
+  "seg"
+);
+
+dash::ToggleButtonCard alarma2Activa(
+  dashboard,
+  "Activar alarma 2"
+);
+
+// ==========================
+// ALARMA 3
+// ==========================
+
+dash::SeparatorCard seccionAlarma3(
+  dashboard,
+  "Alarma 3",
+  "Hora, minuto y duracion"
+);
+
+dash::SliderCard<int> alarma3Hora(
+  dashboard,
+  "Alarma 3 - Hora",
+  0,
+  23,
+  1,
+  "hs"
+);
+
+dash::SliderCard<int> alarma3Minuto(
+  dashboard,
+  "Alarma 3 - Minuto",
+  0,
+  59,
+  1,
+  "min"
+);
+
+dash::SliderCard<int> alarma3Duracion(
+  dashboard,
+  "Alarma 3 - Duracion",
+  1,
+  300,
+  1,
+  "seg"
+);
+
+dash::ToggleButtonCard alarma3Activa(
+  dashboard,
+  "Activar alarma 3"
+);
+
+// ==========================
+// CONTROL GENERAL ALARMAS
+// ==========================
+
+dash::SeparatorCard seccionControlAlarmas(
+  dashboard,
+  "Control general",
+  "Acciones de alarmas"
 );
 
 dash::ToggleButtonCard btnFrenarAlarma(
   dashboard,
-  "Frenar alarma"
+  "Frenar alarmas"
 );
 
 // ==========================
@@ -159,75 +272,97 @@ void enviarIR(uint32_t codigo) {
   irsend.sendNEC(codigo, 32);
   delay(100);
 }
+
+
 // Función para controlar alarma
-void controlarAlarma(struct tm timeinfo) {
-  if (!alarmaActiva) 
-  {
-    alarmaSonando = false;
-    noTone(BUZZER_PIN);
-    return;
-  }
-  // Reset diario a las 00:00
+
+void controlarAlarmas(struct tm timeinfo) {
   if (timeinfo.tm_hour == 0 && timeinfo.tm_min == 0) {
-    alarmaYaDisparoHoy = false;
-  }
-  // Disparo de alarma
-  if (
-    timeinfo.tm_hour == alarmaHora &&
-    timeinfo.tm_min == alarmaMinuto &&
-    !alarmaYaDisparoHoy
-  ) {
-    alarmaSonando = true;
-    alarmaYaDisparoHoy = true;
-    inicioAlarma = millis();
-  }
-  // Sonido de alarma
-  if (alarmaSonando) {
-    if (millis() - inicioAlarma <= alarmaDuracion * 1000UL) {
-      tone(BUZZER_PIN, 2000);
-    } else {
-      alarmaSonando = false;
-      noTone(BUZZER_PIN);
+    for (int i = 0; i < CANT_ALARMAS; i++) {
+      alarmas[i].yaDisparoHoy = false;
     }
-  } else {
-    noTone(BUZZER_PIN);
+  }
+
+  for (int i = 0; i < CANT_ALARMAS; i++) {
+    if (
+      alarmas[i].activa &&
+      !alarmas[i].yaDisparoHoy &&
+      timeinfo.tm_hour == alarmas[i].hora &&
+      timeinfo.tm_min == alarmas[i].minuto
+    ) {
+      alarmas[i].sonando = true;
+      alarmas[i].yaDisparoHoy = true;
+      alarmas[i].inicio = millis();
+
+      Serial.print("Esta sonando la alarma ");
+      Serial.println(i + 1);
+    }
+
+    if (alarmas[i].sonando) {
+      if (millis() - alarmas[i].inicio <= alarmas[i].duracion * 1000UL) {
+        tone(BUZZER_PIN, 2000);
+      } else {
+        alarmas[i].sonando = false;
+        noTone(BUZZER_PIN);
+
+        Serial.print("Finalizo la alarma ");
+        Serial.println(i + 1);
+      }
+    }
   }
 }
-void imprimirAlarmaSerial() {
 
+void imprimirAlarmaSerial(int numero) {
   struct tm timeinfo;
 
+  Serial.print("Alarma ");
+  Serial.print(numero + 1);
+
   if (getLocalTime(&timeinfo)) {
-    horaConfiguracionAlarma = timeinfo.tm_hour;
-    minutoConfiguracionAlarma = timeinfo.tm_min;
+    Serial.print(" configurada a las ");
+    if (timeinfo.tm_hour < 10) Serial.print("0");
+    Serial.print(timeinfo.tm_hour);
+    Serial.print(":");
+    if (timeinfo.tm_min < 10) Serial.print("0");
+    Serial.print(timeinfo.tm_min);
   }
 
-  Serial.print("Alarma configurada a las ");
-
-  if (horaConfiguracionAlarma < 10) Serial.print("0");
-  Serial.print(horaConfiguracionAlarma);
-
-  Serial.print(":");
-
-  if (minutoConfiguracionAlarma < 10) Serial.print("0");
-  Serial.print(minutoConfiguracionAlarma);
-
   Serial.print(" para sonar a las ");
-
-  if (alarmaHora < 10) Serial.print("0");
-  Serial.print(alarmaHora);
-
+  if (alarmas[numero].hora < 10) Serial.print("0");
+  Serial.print(alarmas[numero].hora);
   Serial.print(":");
-
-  if (alarmaMinuto < 10) Serial.print("0");
-  Serial.print(alarmaMinuto);
+  if (alarmas[numero].minuto < 10) Serial.print("0");
+  Serial.print(alarmas[numero].minuto);
 
   Serial.print(" durante ");
-
-  Serial.print(alarmaDuracion);
-
+  Serial.print(alarmas[numero].duracion);
   Serial.println(" segundos");
 }
+
+void activarDesactivarAlarma(int numero, bool estado) {
+  alarmas[numero].activa = estado;
+
+  if (estado) {
+    Serial.print("Se ha activado la alarma ");
+    Serial.println(numero + 1);
+  } else {
+    Serial.print("Se ha desactivado la alarma ");
+    Serial.println(numero + 1);
+
+    alarmas[numero].sonando = false;
+    noTone(BUZZER_PIN);
+  }
+}
+
+void frenarTodasLasAlarmas() {
+  for (int i = 0; i < CANT_ALARMAS; i++) {
+    alarmas[i].sonando = false;
+  }
+
+  noTone(BUZZER_PIN);
+  Serial.println("Se han frenado todas las alarmas");
+}
+
 void setup() 
 {
   Serial.begin(115200);
@@ -324,67 +459,82 @@ void setup()
     btnSmooth.setValue(state);
     dashboard.sendUpdates();
   });
+
 // ==========================
-// CALLBACKS ALARMA
+// CALLBACKS ALARMAS
 // ==========================
 
-inputHoraAlarma.onChange([](int value) {
-
-  alarmaHora = value;
-  inputHoraAlarma.setValue(alarmaHora);
-
-  dashboard.sendUpdates();
-  imprimirAlarmaSerial();
-  Serial.println("hora actualizada");
+// ALARMA 1
+alarma1Hora.onChange([](int value) {
+  alarmas[0].hora = value;
+  imprimirAlarmaSerial(0);
 });
 
-inputMinutoAlarma.onChange([](int value) {
-
-  alarmaMinuto = value;
-
-  inputMinutoAlarma.setValue(alarmaMinuto);
-
-  dashboard.sendUpdates();
-  imprimirAlarmaSerial();
-  Serial.println("minuto actualizada");
+alarma1Minuto.onChange([](int value) {
+  alarmas[0].minuto = value;
+  imprimirAlarmaSerial(0);
 });
 
-inputDuracionAlarma.onChange([](int value) {
-
-  alarmaDuracion = value;
-
-  inputDuracionAlarma.setValue(alarmaDuracion);
-
-  dashboard.sendUpdates();
-  imprimirAlarmaSerial();
-
-  Serial.println("duracion actualizada");
+alarma1Duracion.onChange([](int value) {
+  alarmas[0].duracion = value;
+  imprimirAlarmaSerial(0);
 });
 
-btnActivarAlarma.onChange([](bool state) {
-
-  alarmaActiva = state;
-
-  btnActivarAlarma.setValue(state);
-
-  if (!state) {
-
-    alarmaSonando = false;
-
-    noTone(BUZZER_PIN);
-  }
-
+alarma1Activa.onChange([](bool state) {
+  alarma1Activa.setValue(state);
+  activarDesactivarAlarma(0, state);
   dashboard.sendUpdates();
 });
 
+// ALARMA 2
+alarma2Hora.onChange([](int value) {
+  alarmas[1].hora = value;
+  imprimirAlarmaSerial(1);
+});
+
+alarma2Minuto.onChange([](int value) {
+  alarmas[1].minuto = value;
+  imprimirAlarmaSerial(1);
+});
+
+alarma2Duracion.onChange([](int value) {
+  alarmas[1].duracion = value;
+  imprimirAlarmaSerial(1);
+});
+
+alarma2Activa.onChange([](bool state) {
+  alarma2Activa.setValue(state);
+  activarDesactivarAlarma(1, state);
+  dashboard.sendUpdates();
+});
+
+// ALARMA 3
+alarma3Hora.onChange([](int value) {
+  alarmas[2].hora = value;
+  imprimirAlarmaSerial(2);
+});
+
+alarma3Minuto.onChange([](int value) {
+  alarmas[2].minuto = value;
+  imprimirAlarmaSerial(2);
+});
+
+alarma3Duracion.onChange([](int value) {
+  alarmas[2].duracion = value;
+  imprimirAlarmaSerial(2);
+});
+
+alarma3Activa.onChange([](bool state) {
+  alarma3Activa.setValue(state);
+  activarDesactivarAlarma(2, state);
+  dashboard.sendUpdates();
+});
+
+// FRENAR TODAS
 btnFrenarAlarma.onChange([](bool state) {
-
-  alarmaSonando = false;
-
-  noTone(BUZZER_PIN);
+  frenarTodasLasAlarmas();
 
   btnFrenarAlarma.setValue(false);
-
   dashboard.sendUpdates();
 });
 
@@ -415,6 +565,24 @@ btnMostrarExtrasAhora.onChange([](bool state) {
   ultimoExtraDisplay = millis();
 
   btnMostrarExtrasAhora.setValue(false);
+  
+  alarma1Hora.setValue(alarmas[0].hora);
+alarma1Minuto.setValue(alarmas[0].minuto);
+alarma1Duracion.setValue(alarmas[0].duracion);
+alarma1Activa.setValue(alarmas[0].activa);
+
+alarma2Hora.setValue(alarmas[1].hora);
+alarma2Minuto.setValue(alarmas[1].minuto);
+alarma2Duracion.setValue(alarmas[1].duracion);
+alarma2Activa.setValue(alarmas[1].activa);
+
+alarma3Hora.setValue(alarmas[2].hora);
+alarma3Minuto.setValue(alarmas[2].minuto);
+alarma3Duracion.setValue(alarmas[2].duracion);
+alarma3Activa.setValue(alarmas[2].activa);
+
+btnFrenarAlarma.setValue(false);
+
   dashboard.sendUpdates();
 });
 
@@ -448,7 +616,7 @@ void loop()
 
   } else {
 
-    controlarAlarma(timeinfo);
+    controlarAlarmas(timeinfo);
 
     unsigned long ahora = millis();
 
