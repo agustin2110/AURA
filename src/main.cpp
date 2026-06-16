@@ -36,12 +36,13 @@ struct Alarma {
   bool sonando;
   bool yaDisparoHoy;
   unsigned long inicio;
+  bool dias[7]; 
 };
 
 Alarma alarmas[CANT_ALARMAS] = {
-  {0, 0, 30, false, false, false, 0},
-  {0, 0, 30, false, false, false, 0},
-  {0, 0, 30, false, false, false, 0}
+  {0, 0, 30, false, false, false, 0, {true, true, true, true, true, true, true}},
+  {0, 0, 30, false, false, false, 0, {true, true, true, true, true, true, true}},
+  {0, 0, 30, false, false, false, 0, {true, true, true, true, true, true, true}}
 };
 
 
@@ -138,6 +139,14 @@ dash::ToggleButtonCard alarma1Activa(
   "Activar alarma 1"
 );
 
+dash::ToggleButtonCard alarma1Dom(dashboard, "Alarma 1 Domingo");
+dash::ToggleButtonCard alarma1Lun(dashboard, "Alarma 1 Lunes");
+dash::ToggleButtonCard alarma1Mar(dashboard, "Alarma 1 Martes");
+dash::ToggleButtonCard alarma1Mie(dashboard, "Alarma 1 Miercoles");
+dash::ToggleButtonCard alarma1Jue(dashboard, "Alarma 1 Jueves");
+dash::ToggleButtonCard alarma1Vie(dashboard, "Alarma 1 Viernes");
+dash::ToggleButtonCard alarma1Sab(dashboard, "Alarma 1 Sabado");
+
 // ==========================
 // ALARMA 2
 // ==========================
@@ -180,6 +189,14 @@ dash::ToggleButtonCard alarma2Activa(
   "Activar alarma 2"
 );
 
+dash::ToggleButtonCard alarma2Dom(dashboard, "Alarma 2 Domingo");
+dash::ToggleButtonCard alarma2Lun(dashboard, "Alarma 2 Lunes");
+dash::ToggleButtonCard alarma2Mar(dashboard, "Alarma 2 Martes");
+dash::ToggleButtonCard alarma2Mie(dashboard, "Alarma 2 Miercoles");
+dash::ToggleButtonCard alarma2Jue(dashboard, "Alarma 2 Jueves");
+dash::ToggleButtonCard alarma2Vie(dashboard, "Alarma 2 Viernes");
+dash::ToggleButtonCard alarma2Sab(dashboard, "Alarma 2 Sabado");
+
 // ==========================
 // ALARMA 3
 // ==========================
@@ -221,6 +238,14 @@ dash::ToggleButtonCard alarma3Activa(
   dashboard,
   "Activar alarma 3"
 );
+
+dash::ToggleButtonCard alarma3Dom(dashboard, "Alarma 3 Domingo");
+dash::ToggleButtonCard alarma3Lun(dashboard, "Alarma 3 Lunes");
+dash::ToggleButtonCard alarma3Mar(dashboard, "Alarma 3 Martes");
+dash::ToggleButtonCard alarma3Mie(dashboard, "Alarma 3 Miercoles");
+dash::ToggleButtonCard alarma3Jue(dashboard, "Alarma 3 Jueves");
+dash::ToggleButtonCard alarma3Vie(dashboard, "Alarma 3 Viernes");
+dash::ToggleButtonCard alarma3Sab(dashboard, "Alarma 3 Sabado");
 
 // ==========================
 // CONTROL GENERAL ALARMAS
@@ -286,6 +311,7 @@ void controlarAlarmas(struct tm timeinfo) {
   for (int i = 0; i < CANT_ALARMAS; i++) {
     if (
       alarmas[i].activa &&
+      alarmas[i].dias[timeinfo.tm_wday] &&
       !alarmas[i].yaDisparoHoy &&
       timeinfo.tm_hour == alarmas[i].hora &&
       timeinfo.tm_min == alarmas[i].minuto
@@ -530,11 +556,61 @@ alarma3Activa.onChange([](bool state) {
   dashboard.sendUpdates();
 });
 
+// DIAS ALARMA 1
+alarma1Dom.onChange([](bool state) { alarmas[0].dias[0] = state; alarma1Dom.setValue(state); dashboard.sendUpdates(); });
+alarma1Lun.onChange([](bool state) { alarmas[0].dias[1] = state; alarma1Lun.setValue(state); dashboard.sendUpdates(); });
+alarma1Mar.onChange([](bool state) { alarmas[0].dias[2] = state; alarma1Mar.setValue(state); dashboard.sendUpdates(); });
+alarma1Mie.onChange([](bool state) { alarmas[0].dias[3] = state; alarma1Mie.setValue(state); dashboard.sendUpdates(); });
+alarma1Jue.onChange([](bool state) { alarmas[0].dias[4] = state; alarma1Jue.setValue(state); dashboard.sendUpdates(); });
+alarma1Vie.onChange([](bool state) { alarmas[0].dias[5] = state; alarma1Vie.setValue(state); dashboard.sendUpdates(); });
+alarma1Sab.onChange([](bool state) { alarmas[0].dias[6] = state; alarma1Sab.setValue(state); dashboard.sendUpdates(); });
+
+// DIAS ALARMA 2
+alarma2Dom.onChange([](bool state) { alarmas[1].dias[0] = state; alarma2Dom.setValue(state); dashboard.sendUpdates(); });
+alarma2Lun.onChange([](bool state) { alarmas[1].dias[1] = state; alarma2Lun.setValue(state); dashboard.sendUpdates(); });
+alarma2Mar.onChange([](bool state) { alarmas[1].dias[2] = state; alarma2Mar.setValue(state); dashboard.sendUpdates(); });
+alarma2Mie.onChange([](bool state) { alarmas[1].dias[3] = state; alarma2Mie.setValue(state); dashboard.sendUpdates(); });
+alarma2Jue.onChange([](bool state) { alarmas[1].dias[4] = state; alarma2Jue.setValue(state); dashboard.sendUpdates(); });
+alarma2Vie.onChange([](bool state) { alarmas[1].dias[5] = state; alarma2Vie.setValue(state); dashboard.sendUpdates(); });
+alarma2Sab.onChange([](bool state) { alarmas[1].dias[6] = state; alarma2Sab.setValue(state); dashboard.sendUpdates(); });
+
+// DIAS ALARMA 3
+alarma3Dom.onChange([](bool state) { alarmas[2].dias[0] = state; alarma3Dom.setValue(state); dashboard.sendUpdates(); });
+alarma3Lun.onChange([](bool state) { alarmas[2].dias[1] = state; alarma3Lun.setValue(state); dashboard.sendUpdates(); });
+alarma3Mar.onChange([](bool state) { alarmas[2].dias[2] = state; alarma3Mar.setValue(state); dashboard.sendUpdates(); });
+alarma3Mie.onChange([](bool state) { alarmas[2].dias[3] = state; alarma3Mie.setValue(state); dashboard.sendUpdates(); });
+alarma3Jue.onChange([](bool state) { alarmas[2].dias[4] = state; alarma3Jue.setValue(state); dashboard.sendUpdates(); });
+alarma3Vie.onChange([](bool state) { alarmas[2].dias[5] = state; alarma3Vie.setValue(state); dashboard.sendUpdates(); });
+alarma3Sab.onChange([](bool state) { alarmas[2].dias[6] = state; alarma3Sab.setValue(state); dashboard.sendUpdates(); });
+
 // FRENAR TODAS
 btnFrenarAlarma.onChange([](bool state) {
   frenarTodasLasAlarmas();
 
   btnFrenarAlarma.setValue(false);
+  alarma1Dom.setValue(alarmas[0].dias[0]);
+alarma1Lun.setValue(alarmas[0].dias[1]);
+alarma1Mar.setValue(alarmas[0].dias[2]);
+alarma1Mie.setValue(alarmas[0].dias[3]);
+alarma1Jue.setValue(alarmas[0].dias[4]);
+alarma1Vie.setValue(alarmas[0].dias[5]);
+alarma1Sab.setValue(alarmas[0].dias[6]);
+
+alarma2Dom.setValue(alarmas[1].dias[0]);
+alarma2Lun.setValue(alarmas[1].dias[1]);
+alarma2Mar.setValue(alarmas[1].dias[2]);
+alarma2Mie.setValue(alarmas[1].dias[3]);
+alarma2Jue.setValue(alarmas[1].dias[4]);
+alarma2Vie.setValue(alarmas[1].dias[5]);
+alarma2Sab.setValue(alarmas[1].dias[6]);
+
+alarma3Dom.setValue(alarmas[2].dias[0]);
+alarma3Lun.setValue(alarmas[2].dias[1]);
+alarma3Mar.setValue(alarmas[2].dias[2]);
+alarma3Mie.setValue(alarmas[2].dias[3]);
+alarma3Jue.setValue(alarmas[2].dias[4]);
+alarma3Vie.setValue(alarmas[2].dias[5]);
+alarma3Sab.setValue(alarmas[2].dias[6]);
   dashboard.sendUpdates();
 });
 
