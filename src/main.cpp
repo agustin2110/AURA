@@ -88,6 +88,15 @@ dash::ToggleButtonCard btnFade(dashboard, "FADE");
 dash::ToggleButtonCard btnSmooth(dashboard, "SMOOTH");
 
 // ==========================
+// RECORDATORIOS
+// ==========================
+
+bool recordatorioActivo = false;
+char fraseRecordatorio[20] = "";
+
+char textoPersonalizado[] = "ESTUDIAR";
+
+// ==========================
 // SECCION GENERAL ALARMAS
 // ==========================
 
@@ -298,6 +307,45 @@ void enviarIR(uint32_t codigo) {
   delay(100);
 }
 
+// ==========================
+// RECORDATORIOS
+// ==========================
+
+dash::SeparatorCard seccionRecordatorios(
+  dashboard,
+  "Recordatorios",
+  "Frases fijas en pantalla"
+);
+
+dash::ToggleButtonCard btnRecTarea(
+  dashboard,
+  "TAREA"
+);
+
+dash::ToggleButtonCard btnRecPerro(
+  dashboard,
+  "PERRO"
+);
+
+dash::ToggleButtonCard btnRecPlantas(
+  dashboard,
+  "PLANTAS"
+);
+
+dash::ToggleButtonCard btnRecCompras(
+  dashboard,
+  "COMPRAS"
+);
+
+dash::ToggleButtonCard btnRecPersonalizado(
+  dashboard,
+  "Texto propio"
+);
+
+dash::ToggleButtonCard btnBorrarRecordatorio(
+  dashboard,
+  "Borrar recordatorio"
+);
 
 // Función para controlar alarma
 
@@ -387,6 +435,23 @@ void frenarTodasLasAlarmas() {
 
   noTone(BUZZER_PIN);
   Serial.println("Se han frenado todas las alarmas");
+}
+
+void activarRecordatorio(const char* texto) {
+  recordatorioActivo = true;
+
+  strncpy(fraseRecordatorio, texto, sizeof(fraseRecordatorio) - 1);
+  fraseRecordatorio[sizeof(fraseRecordatorio) - 1] = '\0';
+
+  btnRecTarea.setValue(false);
+  btnRecPerro.setValue(false);
+  btnRecPlantas.setValue(false);
+  btnRecCompras.setValue(false);
+  btnRecPersonalizado.setValue(false);
+  btnBorrarRecordatorio.setValue(false);
+
+  Serial.print("Recordatorio activo: ");
+  Serial.println(fraseRecordatorio);
 }
 
 void setup() 
@@ -666,7 +731,75 @@ btnMostrarFecha.setValue(mostrarFechaActiva);
 btnMostrarTemperatura.setValue(mostrarTemperaturaActiva);
 btnMostrarPresion.setValue(mostrarPresionActiva);
 btnMostrarExtrasAhora.setValue(false);
+btnRecTarea.setValue(false);
+btnRecPerro.setValue(false);
+btnRecPlantas.setValue(false);
+btnRecCompras.setValue(false);
+btnRecPersonalizado.setValue(false);
+btnBorrarRecordatorio.setValue(false);
+
 dashboard.sendUpdates();
+
+// ==========================
+// CALLBACKS RECORDATORIOS
+// ==========================
+
+btnRecTarea.onChange([](bool state) {
+  if (state) {
+    activarRecordatorio("TAREA");
+    btnRecTarea.setValue(true);
+  }
+  dashboard.sendUpdates();
+});
+
+btnRecPerro.onChange([](bool state) {
+  if (state) {
+    activarRecordatorio("PERRO");
+    btnRecPerro.setValue(true);
+  }
+  dashboard.sendUpdates();
+});
+
+btnRecPlantas.onChange([](bool state) {
+  if (state) {
+    activarRecordatorio("PLANT");
+    btnRecPlantas.setValue(true);
+  }
+  dashboard.sendUpdates();
+});
+
+btnRecCompras.onChange([](bool state) {
+  if (state) {
+    activarRecordatorio("COMPRA");
+    btnRecCompras.setValue(true);
+  }
+  dashboard.sendUpdates();
+});
+
+btnRecPersonalizado.onChange([](bool state) {
+  if (state) {
+    activarRecordatorio(textoPersonalizado);
+    btnRecPersonalizado.setValue(true);
+  }
+  dashboard.sendUpdates();
+});
+
+btnBorrarRecordatorio.onChange([](bool state) {
+  recordatorioActivo = false;
+  strcpy(fraseRecordatorio, "");
+
+  btnRecTarea.setValue(false);
+  btnRecPerro.setValue(false);
+  btnRecPlantas.setValue(false);
+  btnRecCompras.setValue(false);
+  btnRecPersonalizado.setValue(false);
+  btnBorrarRecordatorio.setValue(false);
+
+  Serial.println("Recordatorio borrado");
+
+  dashboard.sendUpdates();
+});
+
 server.begin();
 matriz.displayClear();
 Serial.println("ESP-DASH iniciado");
@@ -683,12 +816,20 @@ void loop()
   float presion;
   bmp.getPressure(&presion);
 
+if (recordatorioActivo) {
+  matriz.displayClear();
+  matriz.setTextAlignment(PA_CENTER);
+  matriz.print(fraseRecordatorio);
+  delay(500);
+  return;
+}
+
+  bool usarScroll = false;
+
   if (!getLocalTime(&timeinfo)) {
 
-    sprintf(
-      mensaje,
-      "Hora no disponible"
-    );
+    sprintf(mensaje, "Hora no disponible");
+    usarScroll = true;
 
   } else {
 
@@ -713,7 +854,7 @@ void loop()
 
     sprintf(
       mensaje + strlen(mensaje),
-      "%02d:%02d  ",
+      "%02d:%02d",
       timeinfo.tm_hour,
       timeinfo.tm_min
     );
@@ -723,43 +864,55 @@ void loop()
       if (mostrarFechaActiva) {
         sprintf(
           mensaje + strlen(mensaje),
-          "%02d/%02d/%04d  ",
+          "  %02d/%02d/%04d",
           timeinfo.tm_mday,
           timeinfo.tm_mon + 1,
           timeinfo.tm_year + 1900
         );
+        usarScroll = true;
       }
 
       if (mostrarTemperaturaActiva) {
         sprintf(
           mensaje + strlen(mensaje),
-          "Temp %.1f C  ",
+          "  Temp %.1f C",
           temperatura
         );
+        usarScroll = true;
       }
 
       if (mostrarPresionActiva) {
         sprintf(
           mensaje + strlen(mensaje),
-          "Presion %.0f hPa  ",
+          "  Presion %.0f hPa",
           presion
         );
+        usarScroll = true;
       }
     }
   }
 
-  matriz.displayText(
-    mensaje,
-    PA_CENTER,
-    80,
-    1000,
-    PA_SCROLL_LEFT,
-    PA_SCROLL_LEFT
-  );
+  matriz.displayClear();
 
-  while (!matriz.displayAnimate()) {
-    delay(10);
+  if (usarScroll) {
+
+    matriz.displayText(
+      mensaje,
+      PA_CENTER,
+      80,
+      1000,
+      PA_SCROLL_LEFT,
+      PA_SCROLL_LEFT
+    );
+
+    while (!matriz.displayAnimate()) {
+      delay(10);
+    }
+
+  } else {
+
+    matriz.setTextAlignment(PA_CENTER);
+    matriz.print(mensaje);
+    delay(500);
   }
-
-  delay(500);
 }
