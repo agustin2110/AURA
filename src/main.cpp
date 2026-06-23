@@ -28,6 +28,17 @@ IRsend irsend(IR_PIN);
 #define BUZZER_PIN 12
 #define CANT_ALARMAS 3
 
+// BOTON FISICO
+#define BOTON_PIN 2
+
+bool displayEncendido = true;
+
+bool botonEstadoAnterior = HIGH;
+unsigned long tiempoPresionadoBoton = 0;
+bool accionLargaEjecutada = false;
+
+const unsigned long TIEMPO_PULSACION_LARGA = 1200; // ms
+
 struct Alarma {
   int hora;
   int minuto;
@@ -463,6 +474,7 @@ void setup()
   matriz.displayClear();
   irsend.begin();
   pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(BOTON_PIN, INPUT);
 
   tone (BUZZER_PIN, 1000,1);
   delay (1);
