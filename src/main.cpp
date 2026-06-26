@@ -22,18 +22,22 @@ MD_Parola matriz = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 // BMP180
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 // IR
-#define IR_PIN 13
+#define IR_PIN 4
 IRsend irsend(IR_PIN);
 // BUZZER / ALARMA
-#define BUZZER_PIN 12
+#define BUZZER_PIN 33
 #define CANT_ALARMAS 3
 
+#define RELE_PIN 0
+
 // BOTON FISICO
-#define BOTON_PIN 2
+#define BOTON_PIN 25
+
+bool lamparaEncendida = false;
 
 bool displayEncendido = true;
 
-bool botonEstadoAnterior = HIGH;
+bool botonEstadoAnterior = LOW;
 unsigned long tiempoPresionadoBoton = 0;
 bool accionLargaEjecutada = false;
 
@@ -407,7 +411,9 @@ void imprimirAlarmaSerial(int numero) {
     Serial.print(" configurada a las ");
     if (timeinfo.tm_hour < 10) Serial.print("0");
     Serial.print(timeinfo.tm_hour);
+
     Serial.print(":");
+
     if (timeinfo.tm_min < 10) Serial.print("0");
     Serial.print(timeinfo.tm_min);
   }
@@ -415,7 +421,9 @@ void imprimirAlarmaSerial(int numero) {
   Serial.print(" para sonar a las ");
   if (alarmas[numero].hora < 10) Serial.print("0");
   Serial.print(alarmas[numero].hora);
+
   Serial.print(":");
+
   if (alarmas[numero].minuto < 10) Serial.print("0");
   Serial.print(alarmas[numero].minuto);
 
@@ -465,16 +473,81 @@ void activarRecordatorio(const char* texto) {
   Serial.println(fraseRecordatorio);
 }
 
+void controlarBotonFisico() {
+
+  bool botonEstado = digitalRead(BOTON_PIN);
+
+  // Cuando se presiona el boton
+  if (botonEstadoAnterior == LOW && botonEstado == HIGH) {
+    tiempoPresionadoBoton = millis();
+    accionLargaEjecutada = false;
+
+    Serial.println("Boton presionado");
+  }
+
+  // Mientras se mantiene presionado
+  if (botonEstado == HIGH && !accionLargaEjecutada) {
+
+    if (millis() - tiempoPresionadoBoton >= TIEMPO_PULSACION_LARGA) {
+
+      frenarTodasLasAlarmas();
+
+      recordatorioActivo = false;
+      strcpy(fraseRecordatorio, "");
+
+      btnRecTarea.setValue(false);
+      btnRecPerro.setValue(false);
+      btnRecPlantas.setValue(false);
+      btnRecCompras.setValue(false);
+      btnRecPersonalizado.setValue(false);
+      btnBorrarRecordatorio.setValue(false);
+
+      dashboard.sendUpdates();
+
+      Serial.println("Pulsacion larga: alarmas frenadas y recordatorio borrado");
+
+      accionLargaEjecutada = true;
+    }
+  }
+
+  // Cuando se suelta el boton
+  if (botonEstadoAnterior == HIGH && botonEstado == LOW) {
+
+    unsigned long duracionPulsacion = millis() - tiempoPresionadoBoton;
+
+    if (duracionPulsacion < TIEMPO_PULSACION_LARGA && !accionLargaEjecutada) {
+
+      enviarIR(0x00F740BF);
+      digitalWrite(RELE_PIN, LOW);
+
+      btnOff.setValue(true);
+      btnOn.setValue(false);
+
+      dashboard.sendUpdates();
+
+      Serial.println("Pulsacion corta: lampara RGB apagada");
+    }
+
+    Serial.println("Boton soltado");
+  }
+
+  botonEstadoAnterior = botonEstado;
+}
+
 void setup() 
 {
   Serial.begin(115200);
   Wire.begin(21, 22);
+  SPI.begin(18, -1, 23, 5);
   matriz.begin();
   matriz.setIntensity(5);
   matriz.displayClear();
   irsend.begin();
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BOTON_PIN, INPUT);
+
+  pinMode(RELE_PIN, OUTPUT);
+  digitalWrite(RELE_PIN, LOW);
 
   tone (BUZZER_PIN, 1000,1);
   delay (1);
@@ -496,20 +569,42 @@ void setup()
   Serial.print("IP ESP-DASH: ");
   Serial.println(WiFi.localIP());
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+
   // ==========================
   // CALLBACKS LAMPARA RGB
   // ==========================
-  btnOn.onChange([](bool state) {
-    enviarIR(0x00F7C03F);
-    btnOn.setValue(state);
-    dashboard.sendUpdates();
-    Serial.println("ENCENDIDO");
-  });
-  btnOff.onChange([](bool state) {
-    enviarIR(0x00F740BF);
-    btnOff.setValue(state);
-    dashboard.sendUpdates();
-  });
+
+btnOn.onChange([](bool state) {
+
+  enviarIR(0x00F7C03F);
+  digitalWrite(RELE_PIN, HIGH);
+
+  lamparaEncendida = true;
+
+  btnOn.setValue(true);
+  btnOff.setValue(false);
+
+  dashboard.sendUpdates();
+
+  Serial.println("Lampara ENCENDIDA");
+});
+
+btnOff.onChange([](bool state) {
+
+  enviarIR(0x00F740BF);
+  digitalWrite(RELE_PIN, LOW);
+
+  lamparaEncendida = false;
+
+  btnOff.setValue(true);
+  btnOn.setValue(false);
+
+  dashboard.sendUpdates();
+
+  Serial.println("Lampara APAGADA");
+});
+
   btnBmas.onChange([](bool state) {
     enviarIR(0x00F700FF);
     btnBmas.setValue(state);
@@ -820,6 +915,8 @@ Serial.println("ESP-DASH iniciado");
 
 void loop()
 {
+  controlarBotonFisico();
+
   struct tm timeinfo;
 
   float temperatura;
@@ -905,7 +1002,6 @@ if (recordatorioActivo) {
   }
 
   matriz.displayClear();
-
   if (usarScroll) {
 
     matriz.displayText(
