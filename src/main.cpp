@@ -323,6 +323,29 @@ void enviarIR(uint32_t codigo) {
 }
 
 // ==========================
+// MELODIA ALARMA
+// ==========================
+
+const int melodiaAlarma[] = {
+  880, 0, 880, 0,
+  988, 0, 988, 0,
+  1175, 0, 988, 0,
+  880, 0, 784, 0
+};
+
+const int duracionMelodia[] = {
+  120, 80, 120, 120,
+  120, 80, 120, 120,
+  180, 80, 180, 80,
+  180, 80, 250, 200
+};
+
+const int cantidadNotasAlarma = sizeof(melodiaAlarma) / sizeof(melodiaAlarma[0]);
+
+int notaAlarmaActual = 0;
+unsigned long ultimoCambioNotaAlarma = 0;
+
+// ==========================
 // RECORDATORIOS
 // ==========================
 
@@ -389,11 +412,12 @@ void controlarAlarmas(struct tm timeinfo) {
 
     if (alarmas[i].sonando) {
       if (millis() - alarmas[i].inicio <= alarmas[i].duracion * 1000UL) {
-        tone(BUZZER_PIN, 2000);
+        reproducirMelodiaAlarma();
       } else {
         alarmas[i].sonando = false;
         noTone(BUZZER_PIN);
-
+        notaAlarmaActual = 0;
+        ultimoCambioNotaAlarma = 0;
         Serial.print("Finalizo la alarma ");
         Serial.println(i + 1);
       }
@@ -444,6 +468,8 @@ void activarDesactivarAlarma(int numero, bool estado) {
 
     alarmas[numero].sonando = false;
     noTone(BUZZER_PIN);
+    notaAlarmaActual = 0;
+    ultimoCambioNotaAlarma = 0;
   }
 }
 
@@ -453,10 +479,12 @@ void frenarTodasLasAlarmas() {
   }
 
   noTone(BUZZER_PIN);
+  notaAlarmaActual = 0;
+  ultimoCambioNotaAlarma = 0;
   Serial.println("Se han frenado todas las alarmas");
 }
 
-void activarRecordatorio(const char* texto) {
+ void activarRecordatorio(const char* texto) {
   recordatorioActivo = true;
 
   strncpy(fraseRecordatorio, texto, sizeof(fraseRecordatorio) - 1);
@@ -471,21 +499,20 @@ void activarRecordatorio(const char* texto) {
 
   Serial.print("Recordatorio activo: ");
   Serial.println(fraseRecordatorio);
-}
-
+     }
+     
 void controlarBotonFisico() {
 
   bool botonEstado = digitalRead(BOTON_PIN);
 
-  // Cuando se presiona el boton
+  // Detecta cuando se presiona
   if (botonEstadoAnterior == LOW && botonEstado == HIGH) {
     tiempoPresionadoBoton = millis();
     accionLargaEjecutada = false;
-
     Serial.println("Boton presionado");
   }
 
-  // Mientras se mantiene presionado
+  // Pulsacion larga
   if (botonEstado == HIGH && !accionLargaEjecutada) {
 
     if (millis() - tiempoPresionadoBoton >= TIEMPO_PULSACION_LARGA) {
@@ -510,28 +537,68 @@ void controlarBotonFisico() {
     }
   }
 
-  // Cuando se suelta el boton
+  // Detecta cuando se suelta
   if (botonEstadoAnterior == HIGH && botonEstado == LOW) {
 
     unsigned long duracionPulsacion = millis() - tiempoPresionadoBoton;
 
+    Serial.println("Boton soltado");
+
     if (duracionPulsacion < TIEMPO_PULSACION_LARGA && !accionLargaEjecutada) {
 
-      enviarIR(0x00F740BF);
-      digitalWrite(RELE_PIN, LOW);
+      if (lamparaEncendida) {
 
-      btnOff.setValue(true);
-      btnOn.setValue(false);
+        enviarIR(0x00F740BF);      // OFF IR
+        digitalWrite(RELE_PIN, LOW);
+
+        lamparaEncendida = false;
+
+        btnOff.setValue(true);
+        btnOn.setValue(false);
+
+        Serial.println("Pulsacion corta: lampara apagada");
+
+      } else {
+
+        enviarIR(0x00F7C03F);      // ON IR
+        digitalWrite(RELE_PIN, HIGH);
+
+        lamparaEncendida = true;
+
+        btnOn.setValue(true);
+        btnOff.setValue(false);
+
+        Serial.println("Pulsacion corta: lampara encendida");
+      }
 
       dashboard.sendUpdates();
-
-      Serial.println("Pulsacion corta: lampara RGB apagada");
     }
-
-    Serial.println("Boton soltado");
   }
 
   botonEstadoAnterior = botonEstado;
+}
+
+void reproducirMelodiaAlarma() {
+  if (millis() - ultimoCambioNotaAlarma >= duracionMelodia[notaAlarmaActual]) {
+
+    int frecuencia = melodiaAlarma[notaAlarmaActual];
+
+    if (frecuencia == 0) {
+      noTone(BUZZER_PIN);
+      notaAlarmaActual = 0;
+      ultimoCambioNotaAlarma = 0;
+    } else {
+      tone(BUZZER_PIN, frecuencia);
+    }
+
+    ultimoCambioNotaAlarma = millis();
+
+    notaAlarmaActual++;
+
+    if (notaAlarmaActual >= cantidadNotasAlarma) {
+      notaAlarmaActual = 0;
+    }
+  }
 }
 
 void setup() 
